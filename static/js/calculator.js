@@ -417,9 +417,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.printing_time_hours != null) printHours.value = data.printing_time_hours;
                 if (data.printing_time_minutes != null) printMinutes.value = data.printing_time_minutes;
                 if (data.filament_weight_grams != null) filamentWeight.value = data.filament_weight_grams;
-                if (data.preview_image_base64) {
-                    document.getElementById('previewImageField').value = data.preview_image_base64;
-                    document.getElementById('previewImg').src = 'data:image/png;base64,' + data.preview_image_base64;
+                // Preview images
+                var previewImages = data.preview_images || [];
+                if (!previewImages.length && data.preview_image_base64) {
+                    previewImages = [data.preview_image_base64];
+                }
+                if (previewImages.length > 0) {
+                    document.getElementById('previewImageField').value = previewImages[0];
+                    document.getElementById('previewImagesJson').value = JSON.stringify(previewImages);
+                    var wrap = document.getElementById('previewImagesWrap');
+                    wrap.innerHTML = '';
+                    previewImages.forEach(function (b64) {
+                        var img = document.createElement('img');
+                        img.className = 'img-thumbnail preview-thumb';
+                        img.src = 'data:image/png;base64,' + b64;
+                        img.style.maxWidth = '180px';
+                        img.style.maxHeight = '180px';
+                        wrap.appendChild(img);
+                    });
                     document.getElementById('previewContainer').style.display = 'block';
                 }
                 var jobName = document.getElementById('jobName');
