@@ -488,6 +488,122 @@ def admin_user_delete(user_id):
     return redirect(url_for('admin_users'))
 
 
+# ── Import / Export ──────────────────────────────────────────────────────
+
+@app.route('/export')
+@login_required
+def export_data():
+    calcs = Calculation.query.filter_by(user_id=current_user.id).all()
+    profiles = PrinterProfile.query.all()
+    s = get_settings()
+
+    data = {
+        'version': 1,
+        'exported_at': datetime.now(timezone.utc).isoformat(),
+        'settings': {
+            'spoolman_url': s.spoolman_url,
+            'default_markup': s.default_markup,
+            'default_vat': s.default_vat,
+            'currency': s.currency,
+            'default_prep_cost_per_hour': s.default_prep_cost_per_hour,
+            'default_postprocessing_cost_per_hour': s.default_postprocessing_cost_per_hour,
+            'ftp_host': s.ftp_host,
+            'ftp_access_code': s.ftp_access_code,
+            'ftp_sync_enabled': s.ftp_sync_enabled,
+        },
+        'printer_profiles': [{
+            'name': p.name,
+            'is_default': p.is_default,
+            'purchase_price': p.purchase_price,
+            'investment_return_years': p.investment_return_years,
+            'daily_usage_hours': p.daily_usage_hours,
+            'repair_cost_percent': p.repair_cost_percent,
+            'power_consumption': p.power_consumption,
+            'energy_cost_per_kwh': p.energy_cost_per_kwh,
+        } for p in profiles],
+        'calculations': [_calc_to_dict(c) for c in calcs],
+    }
+
+    buf = BytesIO()
+    buf.write(json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8'))
+    buf.seek(0)
+    app.logger.info("User '%s' exported data: %d calculations, %d profiles",
+                    current_user.username, len(calcs), len(profiles))
+    return send_file(buf, mimetype='application/json',
+                     download_name='printcostcalc_export.json',
+                     as_attachment=True)
+
+
+@app.route('/import', methods=['GET', 'POST'])
+@login_required
+def import_data():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('Keine Datei ausgewählt.', 'danger')
+            return redirect(url_for('import_data'))
+        f = request.files['file']
+        if not f.filename:
+            flash('Keine Datei ausgewählt.', 'danger')
+            return redirect(url_for('import_data'))
+        try:
+            data = json.loads(f.read().decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            flash('Ungültiges Dateiformat.', 'danger')
+            return redirect(url_for('import_data'))
+
+        imported_profiles = 0
+        imported_calcs = 0
+
+        # Import settings
+        if 'settings' in data and request.form.get('import_settings') == 'on':
+            s = get_settings()
+            sd = data['settings']
+            for key in ['spoolman_url', 'default_markup', 'default_vat', 'currency',
+                        'default_prep_cost_per_hour', 'default_postprocessing_cost_per_hour',
+                        'ftp_host', 'ftp_access_code', 'ftp_sync_enabled']:
+                if key in sd:
+                    setattr(s, key, sd[key])
+            db.session.commit()
+
+        # Import printer profiles
+        if 'printer_profiles' in data and request.form.get('import_profiles') == 'on':
+            for pd in data['printer_profiles']:
+                existing = PrinterProfile.query.filter_by(name=pd['name']).first()
+                if not existing:
+                    p = PrinterProfile(
+                        name=pd['name'],
+                        is_default=pd.get('is_default', False),
+                        purchase_price=pd.get('purchase_price', 0),
+                        investment_return_years=pd.get('investment_return_years', 2),
+                        daily_usage_hours=pd.get('daily_usage_hours', 6),
+                        repair_cost_percent=pd.get('repair_cost_percent', 5),
+                        power_consumption=pd.get('power_consumption', 100),
+                        energy_cost_per_kwh=pd.get('energy_cost_per_kwh', 0.30),
+                    )
+                    db.session.add(p)
+                    imported_profiles += 1
+            db.session.commit()
+
+        # Import calculations
+        if 'calculations' in data and request.form.get('import_calcs') == 'on':
+            for cd in data['calculations']:
+                existing = Calculation.query.filter_by(uuid=cd.get('uuid')).first()
+                if not existing:
+                    calc = Calculation(user_id=current_user.id)
+                    calc.uuid = cd.get('uuid') or str(uuid.uuid4())
+                    _apply_calc_json(calc, cd)
+                    db.session.add(calc)
+                    imported_calcs += 1
+            db.session.commit()
+
+        app.logger.info("User '%s' imported: %d profiles, %d calculations",
+                        current_user.username, imported_profiles, imported_calcs)
+        flash(f'{imported_profiles} Druckerprofile und {imported_calcs} Kalkulationen importiert.', 'success')
+        return redirect(url_for('calculations'))
+
+    return render_template('import.html')
+
+
 # ── API ──────────────────────────────────────────────────────────────────
 
 @app.route('/api/calculations', methods=['GET'])

@@ -117,6 +117,24 @@
                 <i class="bi bi-check-lg"></i> Einstellungen speichern
             </button>
         </form>
+
+        <!-- Import / Export -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3"><i class="bi bi-arrow-left-right"></i> Daten</h5>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('export_data') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-download"></i> Export
+                    </a>
+                    <a href="{{ url_for('import_data') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-upload"></i> Import
+                    </a>
+                </div>
+                <div class="form-text mt-2">
+                    Kalkulationen, Druckerprofile und Einstellungen als JSON exportieren oder importieren.
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

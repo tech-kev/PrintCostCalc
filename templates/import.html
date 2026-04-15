@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Daten importieren — PrintCostCalc{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h3 class="mb-4"><i class="bi bi-upload"></i> Daten importieren</h3>
+        <form method="post" enctype="multipart/form-data">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Export-Datei (JSON)</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".json" required>
+                    </div>
+                    <h6 class="mb-3">Was soll importiert werden?</h6>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="import_settings" name="import_settings" checked>
+                        <label class="form-check-label" for="import_settings">Einstellungen</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="import_profiles" name="import_profiles" checked>
+                        <label class="form-check-label" for="import_profiles">Druckerprofile</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="import_calcs" name="import_calcs" checked>
+                        <label class="form-check-label" for="import_calcs">Kalkulationen</label>
+                    </div>
+                    <div class="form-text">
+                        Bereits vorhandene Einträge (gleicher Name/UUID) werden nicht überschrieben.
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Importieren
+                </button>
+                <a href="{{ url_for('settings_page') }}" class="btn btn-outline-secondary">Abbrechen</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
