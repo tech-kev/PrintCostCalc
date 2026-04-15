@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #333;
+            line-height: 1.5;
+        }
+        h1 {
+            color: #f07040;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        h2 {
+            font-size: 14px;
+            color: #555;
+            border-bottom: 2px solid #f07040;
+            padding-bottom: 4px;
+            margin-top: 18px;
+            margin-bottom: 8px;
+        }
+        .header {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .meta {
+            color: #888;
+            font-size: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        td {
+            padding: 4px 8px;
+            vertical-align: top;
+        }
+        .label {
+            color: #666;
+            width: 50%;
+        }
+        .value {
+            text-align: right;
+            font-weight: bold;
+        }
+        .section {
+            background: #f8f8f8;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .total-section {
+            background: #fff3ee;
+            border: 2px solid #f07040;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 15px;
+        }
+        .total-label {
+            font-size: 14px;
+        }
+        .total-value {
+            font-size: 18px;
+            color: #f07040;
+            font-weight: bold;
+            text-align: right;
+        }
+        .subtotal {
+            text-align: right;
+            color: #888;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PrintCostCalc</h1>
+        <div class="meta">
+            Kalkulation erstellt am {{ calculation.created_at.strftime('%d.%m.%Y %H:%M') if calculation.created_at else '-' }}
+            | Zuletzt aktualisiert: {{ calculation.updated_at.strftime('%d.%m.%Y %H:%M') if calculation.updated_at else '-' }}
+        </div>
+    </div>
+
+    <h2>{{ calculation.job_name or 'Ohne Name' }}</h2>
+
+    <div class="section">
+        <table>
+            <tr>
+                <td class="label">Druckzeit</td>
+                <td class="value">{{ calculation.printing_time_hours }} Std {{ calculation.printing_time_minutes }} Min</td>
+            </tr>
+            <tr>
+                <td class="label">Filamentgewicht</td>
+                <td class="value">{{ '%.1f'|format(calculation.filament_weight_grams) }} g</td>
+            </tr>
+            {% if calculation.printer_profile %}
+            <tr>
+                <td class="label">Drucker</td>
+                <td class="value">{{ calculation.printer_profile.name }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <h2>Filament</h2>
+    <div class="section">
+        <table>
+            <tr>
+                <td class="label">Typ / Name</td>
+                <td class="value">{{ calculation.filament_type }} — {{ calculation.filament_name or '-' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Spulenpreis / Gewicht</td>
+                <td class="value">{{ '%.2f'|format(calculation.spool_price) }} {{ settings.currency }} / {{ '%.0f'|format(calculation.spool_weight) }} g</td>
+            </tr>
+            <tr>
+                <td class="label">Markup</td>
+                <td class="value">{{ '%.0f'|format(calculation.markup_percent) }}%</td>
+            </tr>
+            <tr>
+                <td class="label">Filamentkosten</td>
+                <td class="value">{{ '%.2f'|format(calculation.filament_cost) }} {{ settings.currency }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if calculation.electricity_enabled %}
+    <h2>Stromkosten</h2>
+    <div class="section">
+        <table>
+            <tr>
+                <td class="label">Leistung / Strompreis</td>
+                <td class="value">{{ '%.0f'|format(calculation.power_consumption) }} W / {{ '%.2f'|format(calculation.energy_cost_per_kwh) }} {{ settings.currency }}/kWh</td>
+            </tr>
+            <tr>
+                <td class="label">Stromkosten</td>
+                <td class="value">{{ '%.2f'|format(calculation.electricity_cost) }} {{ settings.currency }}</td>
+            </tr>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if calculation.labor_enabled %}
+    <h2>Arbeitskosten</h2>
+    <div class="section">
+        <table>
+            <tr>
+                <td class="label">Vorbereitung</td>
+                <td class="value">{{ '%.0f'|format(calculation.prep_time_minutes) }} Min × {{ '%.2f'|format(calculation.prep_cost_per_hour) }} {{ settings.currency }}/Std</td>
+            </tr>
+            <tr>
+                <td class="label">Nachbearbeitung</td>
+                <td class="value">{{ '%.0f'|format(calculation.postprocessing_time_minutes) }} Min × {{ '%.2f'|format(calculation.postprocessing_cost_per_hour) }} {{ settings.currency }}/Std</td>
+            </tr>
+            <tr>
+                <td class="label">Arbeitskosten</td>
+                <td class="value">{{ '%.2f'|format(calculation.labor_cost) }} {{ settings.currency }}</td>
+            </tr>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if calculation.machine_enabled %}
+    <h2>Maschine &amp; Instandhaltung</h2>
+    <div class="section">
+        <table>
+            <tr>
+                <td class="label">Druckerkosten</td>
+                <td class="value">{{ '%.2f'|format(calculation.machine_purchase_price) }} {{ settings.currency }}</td>
+            </tr>
+            <tr>
+                <td class="label">Amortisation / Nutzung</td>
+                <td class="value">{{ '%.1f'|format(calculation.machine_return_years) }} Jahre / {{ '%.0f'|format(calculation.machine_daily_hours) }} Std/Tag</td>
+            </tr>
+            <tr>
+                <td class="label">Reparaturkosten</td>
+                <td class="value">{{ '%.0f'|format(calculation.machine_repair_percent) }}%</td>
+            </tr>
+            <tr>
+                <td class="label">Maschinenkosten</td>
+                <td class="value">{{ '%.2f'|format(calculation.machine_cost) }} {{ settings.currency }}</td>
+            </tr>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if calculation.other_costs %}
+    <h2>Sonstige Kosten</h2>
+    <div class="section">
+        <table>
+            {% for item in calculation.other_costs %}
+            <tr>
+                <td class="label">{{ item.name or 'Sonstiges' }}</td>
+                <td class="value">{{ '%.2f'|format(item.cost or 0) }} {{ settings.currency }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
+    {% set other_total = calculation.other_costs | map(attribute='cost') | select('number') | sum if calculation.other_costs else 0 %}
+    {% set subtotal = calculation.filament_cost + calculation.electricity_cost + calculation.labor_cost + calculation.machine_cost + other_total %}
+
+    <div class="total-section">
+        <table>
+            <tr>
+                <td class="subtotal" colspan="2">
+                    Zwischensumme (netto): {{ '%.2f'|format(subtotal) }} {{ settings.currency }}
+                </td>
+            </tr>
+            <tr>
+                <td class="subtotal" colspan="2">
+                    MwSt.: {{ '%.1f'|format(calculation.vat_percent) }}%
+                </td>
+            </tr>
+            <tr>
+                <td class="total-label">Endpreis</td>
+                <td class="total-value">{{ '%.2f'|format(calculation.total_price) }} {{ settings.currency }}</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

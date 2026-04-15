@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Drucker-Dateien — PrintCostCalc{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3><i class="bi bi-folder"></i> Drucker-Dateien</h3>
+    <button class="btn btn-primary" id="syncBtn">
+        <i class="bi bi-arrow-clockwise"></i> Synchronisieren
+    </button>
+</div>
+
+<div id="syncResult" class="mb-3"></div>
+
+{% if files %}
+<div class="mb-3">
+    <input type="text" class="form-control" id="searchFiles" placeholder="Dateien durchsuchen...">
+</div>
+
+<div class="row g-3" id="fileGrid">
+    {% for f in files %}
+    <div class="col-md-6 col-lg-4 file-card" data-name="{{ f.filename.split('/')[-1]|lower }}">
+        <div class="card shadow-sm h-100 {{ 'border-success' if f.calculation_id else '' }}">
+            <div class="card-body text-center">
+                {% if f.preview_image %}
+                <img src="data:image/png;base64,{{ f.preview_image }}"
+                     alt="Vorschau" class="img-fluid rounded mb-2" style="max-height: 140px;">
+                {% else %}
+                <div class="text-muted py-4"><i class="bi bi-box" style="font-size: 3rem;"></i></div>
+                {% endif %}
+                <h6 class="card-title mb-1 text-break">
+                    {{ f.filename.split('/')[-1].replace('.gcode.3mf', '') }}
+                </h6>
+                <div class="small text-muted mb-2">
+                    {% if f.printing_time_hours or f.printing_time_minutes %}
+                    <i class="bi bi-clock"></i> {{ f.printing_time_hours }}h {{ f.printing_time_minutes }}min
+                    {% endif %}
+                    {% if f.filament_weight_grams %}
+                    &nbsp;<i class="bi bi-box"></i> {{ '%.1f'|format(f.filament_weight_grams) }}g
+                    {% endif %}
+                    {% if f.filament_type %}
+                    {{ f.filament_type }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer text-center">
+                {% if f.calculation_id %}
+                <a href="{{ url_for('calculation_edit', calc_id=f.calculation_id) }}"
+                   class="btn btn-sm btn-success w-100">
+                    <i class="bi bi-check-circle"></i> Kalkulation anzeigen
+                </a>
+                {% else %}
+                <a href="{{ url_for('printer_file_new_calc', file_id=f.id) }}"
+                   class="btn btn-sm btn-outline-primary w-100">
+                    <i class="bi bi-calculator"></i> Kalkulation erstellen
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-folder2-open" style="font-size: 3rem;"></i>
+    <p class="mt-3">Noch keine Drucker-Dateien synchronisiert.</p>
+    <p>Richte die FTP-Verbindung in den <a href="{{ url_for('settings_page') }}">Einstellungen</a> ein
+       und klicke auf "Synchronisieren".</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Search
+var search = document.getElementById('searchFiles');
+if (search) {
+    search.addEventListener('input', function() {
+        var q = this.value.toLowerCase();
+        document.querySelectorAll('.file-card').forEach(function(card) {
+            card.style.display = card.dataset.name.indexOf(q) !== -1 ? '' : 'none';
+        });
+    });
+}
+
+// Sync button
+document.getElementById('syncBtn').addEventListener('click', function() {
+    var btn = this;
+    var result = document.getElementById('syncResult');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Synchronisiere...';
+    fetch('/api/ftp/sync', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                result.innerHTML = '<div class="alert alert-success alert-dismissible fade show">' +
+                    'Sync gestartet. Seite in ein paar Sekunden neu laden.' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+                setTimeout(function() { location.reload(); }, 5000);
+            } else {
+                result.innerHTML = '<div class="alert alert-danger">' + (data.message || 'Fehler') + '</div>';
+            }
+        })
+        .catch(function() {
+            result.innerHTML = '<div class="alert alert-danger">Sync fehlgeschlagen.</div>';
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Synchronisieren';
+        });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Druckerprofil bearbeiten' if edit else 'Neues Druckerprofil' }} — PrintCostCalc{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h3 class="mb-4">{{ 'Druckerprofil bearbeiten' if edit else 'Neues Druckerprofil' }}</h3>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{ printer.name if printer else '' }}"
+                               placeholder="z.B. Bambu Lab P1S" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_default"
+                               name="is_default" {{ 'checked' if printer and printer.is_default }}>
+                        <label class="form-check-label" for="is_default">
+                            Als Standard-Drucker verwenden
+                        </label>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="purchase_price" class="form-label">Kaufpreis (€)</label>
+                            <input type="number" class="form-control" id="purchase_price"
+                                   name="purchase_price" step="0.01" min="0"
+                                   value="{{ printer.purchase_price if printer else 780 }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="investment_return_years" class="form-label">Amortisation (Jahre)</label>
+                            <input type="number" class="form-control" id="investment_return_years"
+                                   name="investment_return_years" step="0.5" min="0.5"
+                                   value="{{ printer.investment_return_years if printer else 2 }}">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="daily_usage_hours" class="form-label">Tägliche Nutzung (Std)</label>
+                            <input type="number" class="form-control" id="daily_usage_hours"
+                                   name="daily_usage_hours" step="0.5" min="0.5" max="24"
+                                   value="{{ printer.daily_usage_hours if printer else 6 }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="repair_cost_percent" class="form-label">Reparaturkosten (%)</label>
+                            <input type="number" class="form-control" id="repair_cost_percent"
+                                   name="repair_cost_percent" step="1" min="0" max="100"
+                                   value="{{ printer.repair_cost_percent if printer else 5 }}">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="power_consumption" class="form-label">Leistungsaufnahme (W)</label>
+                            <input type="number" class="form-control" id="power_consumption"
+                                   name="power_consumption" step="1" min="0"
+                                   value="{{ printer.power_consumption if printer else 100 }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="energy_cost_per_kwh" class="form-label">Strompreis (€/kWh)</label>
+                            <input type="number" class="form-control" id="energy_cost_per_kwh"
+                                   name="energy_cost_per_kwh" step="0.01" min="0"
+                                   value="{{ printer.energy_cost_per_kwh if printer else 0.30 }}">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> {{ 'Speichern' if edit else 'Erstellen' }}
+                        </button>
+                        <a href="{{ url_for('printers') }}" class="btn btn-outline-secondary">Abbrechen</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

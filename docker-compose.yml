@@ -1,0 +1,13 @@
+services:
+  printcostcalc:
+    build: .
+    ports:
+      - "5002:5002"
+    environment:
+      - SECRET_KEY=change-me-to-a-random-secret
+    volumes:
+      - printcostcalc_data:/app/instance
+    restart: unless-stopped
+
+volumes:
+  printcostcalc_data:

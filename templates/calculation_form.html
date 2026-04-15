@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Kalkulation bearbeiten' if edit else 'Neue Kalkulation' }} — PrintCostCalc{% endblock %}
+{% block content %}
+<h3 class="mb-4">{{ 'Kalkulation bearbeiten' if edit else 'Neue Kalkulation' }}</h3>
+
+<form method="post" id="calcForm" {{ 'data-edit="true"' if edit else '' }}
+      action="{{ url_for('calculation_edit', calc_id=calculation.id) if edit and calculation.id else url_for('calculation_new') }}">
+    <input type="hidden" name="uuid" id="calcUuid"
+           value="{{ calculation.uuid if calculation else '' }}">
+    <input type="hidden" name="preview_image" id="previewImageField"
+           value="{{ calculation.preview_image or '' }}">
+    <input type="hidden" name="other_costs_json" id="otherCostsJson"
+           value='{{ (calculation.other_costs | tojson) if calculation and calculation.other_costs else "[]" }}'>
+    {% if printer_file_id %}
+    <input type="hidden" name="printer_file_id" value="{{ printer_file_id }}">
+    {% endif %}
+
+    <!-- ═══ Print Info ═══ -->
+    <div class="section-block mb-4">
+        <h5 class="section-title"><i class="bi bi-info-circle"></i> Print Info</h5>
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <label for="jobName" class="form-label">Job-Name</label>
+                <input type="text" class="form-control" id="jobName" name="job_name"
+                       value="{{ calculation.job_name if calculation else '' }}"
+                       placeholder="z.B. Benchy">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Währung</label>
+                <input type="text" class="form-control" value="{{ settings.currency }}" disabled>
+            </div>
+        </div>
+        <p class="text-muted small mb-2">
+            <i class="bi bi-lightbulb"></i>
+            Zeit und Gewicht werden automatisch ausgefüllt wenn du eine 3MF/GCode-Datei hochlädst.
+        </p>
+        <div class="mb-3">
+            <input type="file" class="form-control" id="fileUpload" accept=".3mf,.gcode,.gco">
+            <div id="fileStatus" class="mt-1"></div>
+        </div>
+        <div id="previewContainer" class="mb-3"
+             style="display:{{ 'block' if calculation and calculation.preview_image else 'none' }}">
+            <img id="previewImg" class="img-thumbnail"
+                 src="{{ ('data:image/png;base64,' + calculation.preview_image) if calculation and calculation.preview_image else '' }}"
+                 style="max-width:200px; max-height:200px;">
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <label class="form-label">Druckzeit</label>
+                <div class="input-group">
+                    <input type="number" class="form-control calc-input" id="printHours"
+                           name="printing_time_hours" min="0"
+                           value="{{ calculation.printing_time_hours if calculation else 0 }}">
+                    <span class="input-group-text">Std</span>
+                    <input type="number" class="form-control calc-input" id="printMinutes"
+                           name="printing_time_minutes" min="0" max="59"
+                           value="{{ calculation.printing_time_minutes if calculation else 0 }}">
+                    <span class="input-group-text">Min</span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label for="filamentWeight" class="form-label">Filamentgewicht</label>
+                <div class="input-group">
+                    <input type="number" class="form-control calc-input" id="filamentWeight"
+                           name="filament_weight_grams" min="0" step="0.01"
+                           value="{{ calculation.filament_weight_grams if calculation else 0 }}">
+                    <span class="input-group-text">g</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Drucker ═══ -->
+    <div class="section-block mb-4">
+        <h5 class="section-title"><i class="bi bi-printer"></i> Drucker</h5>
+        <div class="row">
+            <div class="col-md-8">
+                <label for="printerProfile" class="form-label">Druckerprofil (optional)</label>
+                <select class="form-select" id="printerProfile" name="printer_profile_id">
+                    <option value="">— Kein Profil —</option>
+                    {% for p in printers %}
+                    <option value="{{ p.id }}"
+                            data-power="{{ p.power_consumption }}"
+                            data-energy="{{ p.energy_cost_per_kwh }}"
+                            data-price="{{ p.purchase_price }}"
+                            data-years="{{ p.investment_return_years }}"
+                            data-hours="{{ p.daily_usage_hours }}"
+                            data-repair="{{ p.repair_cost_percent }}"
+                            {{ 'selected' if (calculation and calculation.printer_profile_id == p.id) or (not calculation and default_printer_id == p.id) }}>
+                        {{ p.name }}{% if p.is_default %} (Standard){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Filament ═══ -->
+    <div class="section-block mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="section-title mb-0"><i class="bi bi-circle-fill" style="font-size:0.7rem"></i> Filament</h5>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addFilament">
+                <i class="bi bi-plus"></i> Filament
+            </button>
+        </div>
+        <input type="hidden" id="filamentsJson" name="filaments_json"
+               value='{{ (calculation.filaments or [])|tojson if calculation else "[]" }}'>
+        <!-- Legacy hidden fields for backward compat -->
+        <input type="hidden" name="filament_type" id="filamentType"
+               value="{{ calculation.filament_type if calculation else 'PLA' }}"
+               data-current="{{ calculation.filament_type if calculation else 'PLA' }}">
+        <input type="hidden" name="filament_name" id="filamentName"
+               value="{{ calculation.filament_name if calculation else '' }}">
+        <input type="hidden" name="spool_price" id="spoolPrice" value="{{ calculation.spool_price if calculation else 0 }}">
+        <input type="hidden" name="spool_weight" id="spoolWeight" value="{{ calculation.spool_weight if calculation else 1000 }}">
+
+        <div id="filamentsList"></div>
+
+        <div class="mb-3 mt-3">
+            <label for="markupSlider" class="form-label">
+                Markup: <span class="badge bg-accent" id="markupValue">{{ calculation.markup_percent|int if calculation else settings.default_markup }}%</span>
+            </label>
+            <input type="range" class="form-range accent-range" id="markupSlider"
+                   name="markup_percent" min="0" max="200" step="1"
+                   value="{{ calculation.markup_percent if calculation else settings.default_markup }}">
+        </div>
+        <div class="cost-display">
+            Filamentkosten: <strong id="filamentCostDisplay">0,00 {{ settings.currency }}</strong>
+        </div>
+    </div>
+
+    <!-- ═══ Stromkosten ═══ -->
+    <div class="section-block mb-4" id="electricitySection">
+        <div class="section-header">
+            <h5 class="section-title"><i class="bi bi-lightning"></i> Stromkosten</h5>
+            <div class="form-check form-switch">
+                <input class="form-check-input toggle-section" type="checkbox" role="switch"
+                       id="electricityToggle" name="electricity_enabled"
+                       data-section="electricityFields"
+                       {{ 'checked' if not calculation or calculation.electricity_enabled }}>
+            </div>
+        </div>
+        <div id="electricityFields" class="{{ 'section-disabled' if calculation and not calculation.electricity_enabled else '' }}">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="powerConsumption" class="form-label">Leistungsaufnahme (W)</label>
+                    <input type="number" class="form-control calc-input" id="powerConsumption"
+                           name="power_consumption" step="1" min="0"
+                           value="{{ calculation.power_consumption if calculation else 0 }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="energyCost" class="form-label">Strompreis ({{ settings.currency }}/kWh)</label>
+                    <input type="number" class="form-control calc-input" id="energyCost"
+                           name="energy_cost_per_kwh" step="0.01" min="0"
+                           value="{{ calculation.energy_cost_per_kwh if calculation else 0.30 }}">
+                </div>
+            </div>
+            <div class="cost-display">
+                Stromkosten: <strong id="electricityCostDisplay">0,00 {{ settings.currency }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Arbeitskosten ═══ -->
+    <div class="section-block mb-4" id="laborSection">
+        <div class="section-header">
+            <h5 class="section-title"><i class="bi bi-person-workspace"></i> Arbeitskosten</h5>
+            <div class="form-check form-switch">
+                <input class="form-check-input toggle-section" type="checkbox" role="switch"
+                       id="laborToggle" name="labor_enabled"
+                       data-section="laborFields"
+                       {{ 'checked' if not calculation or calculation.labor_enabled }}>
+            </div>
+        </div>
+        <div id="laborFields" class="{{ 'section-disabled' if calculation and not calculation.labor_enabled else '' }}">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-medium">Druckvorbereitung</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control calc-input" id="prepTime"
+                               name="prep_time_minutes" step="1" min="0"
+                               value="{{ calculation.prep_time_minutes|int if calculation else 0 }}">
+                        <span class="input-group-text">Min</span>
+                        <input type="number" class="form-control calc-input" id="prepCost"
+                               name="prep_cost_per_hour" step="0.50" min="0"
+                               value="{{ calculation.prep_cost_per_hour if calculation else settings.default_prep_cost_per_hour }}">
+                        <span class="input-group-text">{{ settings.currency }}/Std</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-medium">Nachbearbeitung</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control calc-input" id="postTime"
+                               name="postprocessing_time_minutes" step="1" min="0"
+                               value="{{ calculation.postprocessing_time_minutes|int if calculation else 0 }}">
+                        <span class="input-group-text">Min</span>
+                        <input type="number" class="form-control calc-input" id="postCost"
+                               name="postprocessing_cost_per_hour" step="0.50" min="0"
+                               value="{{ calculation.postprocessing_cost_per_hour if calculation else settings.default_postprocessing_cost_per_hour }}">
+                        <span class="input-group-text">{{ settings.currency }}/Std</span>
+                    </div>
+                </div>
+            </div>
+            <div class="cost-display">
+                Arbeitskosten: <strong id="laborCostDisplay">0,00 {{ settings.currency }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Maschine & Instandhaltung ═══ -->
+    <div class="section-block mb-4" id="machineSection">
+        <div class="section-header">
+            <h5 class="section-title"><i class="bi bi-gear"></i> Maschine &amp; Instandhaltung</h5>
+            <div class="form-check form-switch">
+                <input class="form-check-input toggle-section" type="checkbox" role="switch"
+                       id="machineToggle" name="machine_enabled"
+                       data-section="machineFields"
+                       {{ 'checked' if not calculation or calculation.machine_enabled }}>
+            </div>
+        </div>
+        <div id="machineFields" class="{{ 'section-disabled' if calculation and not calculation.machine_enabled else '' }}">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="machinePurchasePrice" class="form-label">Druckerkosten ({{ settings.currency }})</label>
+                    <input type="number" class="form-control calc-input" id="machinePurchasePrice"
+                           name="machine_purchase_price" step="0.01" min="0"
+                           value="{{ calculation.machine_purchase_price if calculation else 0 }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="machineReturnYears" class="form-label">Amortisation (Jahre)</label>
+                    <input type="number" class="form-control calc-input" id="machineReturnYears"
+                           name="machine_return_years" step="0.5" min="0.5"
+                           value="{{ calculation.machine_return_years if calculation else 2 }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="machineDailyHoursSlider" class="form-label">
+                    Tägliche Nutzung: <span class="badge bg-accent" id="dailyHoursValue">{{ calculation.machine_daily_hours|int if calculation else 6 }} Std</span>
+                </label>
+                <input type="range" class="form-range accent-range" id="machineDailyHoursSlider"
+                       name="machine_daily_hours" min="1" max="24" step="1"
+                       value="{{ calculation.machine_daily_hours if calculation else 6 }}">
+            </div>
+            <div class="mb-3">
+                <label for="machineRepairSlider" class="form-label">
+                    Reparaturkosten: <span class="badge bg-accent" id="repairValue">{{ calculation.machine_repair_percent|int if calculation else 5 }}%</span>
+                </label>
+                <input type="range" class="form-range accent-range" id="machineRepairSlider"
+                       name="machine_repair_percent" min="0" max="100" step="1"
+                       value="{{ calculation.machine_repair_percent if calculation else 5 }}">
+            </div>
+            <div class="cost-display">
+                Maschinenkosten: <strong id="machineCostDisplay">0,00 {{ settings.currency }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Sonstige Kosten ═══ -->
+    <div class="section-block mb-4">
+        <h5 class="section-title"><i class="bi bi-three-dots"></i> Sonstige Kosten</h5>
+        <div id="otherCostsList">
+            <!-- Dynamic rows inserted by JS -->
+        </div>
+        <button type="button" class="btn btn-sm btn-accent mt-2" id="addOtherCost">
+            <i class="bi bi-plus-circle"></i> Zeile hinzufügen
+        </button>
+        <div class="cost-display mt-3">
+            Sonstige Kosten: <strong id="otherCostDisplay">0,00 {{ settings.currency }}</strong>
+        </div>
+    </div>
+
+    <!-- ═══ Abschluss ═══ -->
+    <div class="section-block section-block-accent mb-4">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-4">
+                <label for="vatPercent" class="form-label fw-bold">MwSt. (%)</label>
+                <input type="number" class="form-control calc-input" id="vatPercent"
+                       name="vat_percent" step="0.1" min="0"
+                       value="{{ calculation.vat_percent if calculation else settings.default_vat }}">
+            </div>
+            <div class="col-md-8 text-end">
+                <div class="mb-1 text-muted">Zwischensumme (netto): <span id="subtotalDisplay">0,00</span> {{ settings.currency }}</div>
+                <div class="mb-1 text-muted">Berechneter Preis: <span id="calculatedPriceDisplay">0,00</span> {{ settings.currency }}</div>
+                <div class="total-price">
+                    Endpreis: <span id="totalPriceDisplay">0,00</span> {{ settings.currency }}
+                </div>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Endpreis anpassen</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" id="finalPriceOverride"
+                           name="final_price_override" step="0.01" min="0"
+                           placeholder="Leer = berechnet"
+                           value="{{ calculation.final_price_override if calculation and calculation.final_price_override else '' }}">
+                    <span class="input-group-text">{{ settings.currency }}</span>
+                </div>
+            </div>
+            <div class="col-md-8 d-flex align-items-end gap-2 flex-wrap">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="roundUp1">Auf 1{{ settings.currency }} aufrunden</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="roundUp50ct">Auf 50ct aufrunden</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="resetOverride">Zurücksetzen</button>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-accent btn-lg">
+                <i class="bi bi-save"></i> Berechnung speichern
+            </button>
+            {% if edit %}
+            <a href="{{ url_for('calculation_pdf', calc_id=calculation.id) }}"
+               class="btn btn-outline-secondary btn-lg" id="btnPdf" target="_blank">
+                <i class="bi bi-file-pdf"></i> Als PDF exportieren
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+<!-- Spoolman Modal — must be outside the form to avoid scroll issues -->
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="spoolmanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Filament aus Spoolman wählen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="spoolmanFilterRow" class="d-none mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="spoolmanShowAll">
+                        <label class="form-check-label" for="spoolmanShowAll">
+                            Alle Typen anzeigen <small class="text-muted">(gefiltert nach <strong id="spoolmanFilterLabel">PLA</strong>)</small>
+                        </label>
+                    </div>
+                </div>
+                <div id="spoolmanLoading" class="text-center py-3">
+                    <div class="spinner-border text-secondary"></div>
+                    <p class="mt-2">Lade Spulen...</p>
+                </div>
+                <div id="spoolmanError" class="alert alert-danger d-none"></div>
+                <div class="table-responsive">
+                    <table class="table table-hover d-none" id="spoolmanTable">
+                        <thead>
+                            <tr>
+                                <th>Farbe</th>
+                                <th>Name</th>
+                                <th>Material</th>
+                                <th>Ort</th>
+                                <th>Restgewicht</th>
+                                <th>Preis</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="spoolmanBody"></tbody>
+                    </table>
+                </div>
+                <div id="spoolmanEmpty" class="text-center text-muted py-3 d-none">
+                    Keine passenden Spulen gefunden.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var printerProfilesMap = {};
+    {% for p in printers %}
+    printerProfilesMap[{{ p.id }}] = {
+        power_consumption: {{ p.power_consumption }},
+        energy_cost_per_kwh: {{ p.energy_cost_per_kwh }},
+        purchase_price: {{ p.purchase_price }},
+        investment_return_years: {{ p.investment_return_years }},
+        daily_usage_hours: {{ p.daily_usage_hours }},
+        repair_cost_percent: {{ p.repair_cost_percent }}
+    };
+    {% endfor %}
+    var CURRENCY = '{{ settings.currency }}';
+</script>
+<script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
+<script src="{{ url_for('static', filename='js/spoolman.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sync.js') }}"></script>
+{% endblock %}

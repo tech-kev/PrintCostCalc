@@ -1,0 +1,16 @@
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+.git/
+.gitignore
+.DS_Store
+.env
+.env.local
+*.3mf
+*.gcode
+instance/*.db
+.vscode/
+.idea/

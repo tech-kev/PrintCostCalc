@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Anmelden — PrintCostCalc{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold"><i class="bi bi-calculator"></i> PrintCostCalc</h2>
+            <p class="text-muted">3D-Druck-Kostenrechner</p>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3">Anmelden</h5>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Benutzername</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Passwort</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                        <label class="form-check-label" for="remember">Angemeldet bleiben</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

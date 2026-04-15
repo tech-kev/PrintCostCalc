@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#f07040"/>
+  <g transform="translate(256,256)" fill="none" stroke="#fff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 3D printer body -->
+    <rect x="-120" y="-40" width="240" height="160" rx="16" fill="none"/>
+    <!-- Print bed -->
+    <line x1="-100" y1="60" x2="100" y2="60"/>
+    <!-- Extruder -->
+    <line x1="0" y1="-40" x2="0" y2="0"/>
+    <!-- Printed object (triangle) -->
+    <polygon points="-30,60 30,60 0,20" fill="#fff" stroke="none" opacity="0.8"/>
+    <!-- Calculator display -->
+    <rect x="-60" y="-150" width="120" height="50" rx="8" fill="#fff" opacity="0.3"/>
+    <text x="0" y="-115" text-anchor="middle" fill="#fff" font-size="32" font-family="sans-serif" font-weight="bold" stroke="none">€</text>
+  </g>
+</svg>

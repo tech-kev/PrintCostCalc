@@ -1,0 +1,199 @@
+/* PrintCostCalc — Custom Styles */
+
+:root {
+    --accent: #f07040;
+    --accent-hover: #d85e30;
+    --section-bg: #f0f0f0;
+    --section-border: #e0e0e0;
+}
+
+/* Accent buttons */
+.btn-accent {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.btn-accent:hover, .btn-accent:focus {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #fff;
+}
+
+.btn-primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+/* Badge accent */
+.bg-accent {
+    background-color: var(--accent) !important;
+    color: #fff !important;
+}
+
+/* Section blocks */
+.section-block {
+    background: var(--section-bg);
+    border: 1px solid var(--section-border);
+    border-radius: 8px;
+    padding: 20px 24px;
+}
+
+.section-block-accent {
+    background: #fff8f5;
+    border-color: var(--accent);
+}
+
+.section-title {
+    margin-bottom: 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.section-header .section-title {
+    margin-bottom: 0;
+}
+
+/* Toggle switch accent */
+.form-check-input:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* Disabled section */
+.section-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+.section-disabled.section-enabled,
+div:not(.section-disabled) {
+    max-height: 2000px;
+    opacity: 1;
+}
+
+/* Range slider accent */
+.accent-range::-webkit-slider-thumb {
+    background: var(--accent);
+}
+.accent-range::-moz-range-thumb {
+    background: var(--accent);
+}
+.accent-range::-webkit-slider-runnable-track {
+    background: #ddd;
+    border-radius: 4px;
+    height: 6px;
+}
+
+/* Cost display */
+.cost-display {
+    text-align: right;
+    font-size: 0.95rem;
+    color: #555;
+    padding-top: 8px;
+    border-top: 1px solid var(--section-border);
+    margin-top: 8px;
+}
+
+/* Total price */
+.total-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+/* Offline banner */
+.offline-banner {
+    background-color: #ffc107;
+    color: #333;
+    font-weight: 500;
+    z-index: 1050;
+}
+
+/* Other costs row */
+.other-cost-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+.other-cost-row input[type="text"] {
+    flex: 2;
+}
+.other-cost-row input[type="number"] {
+    flex: 1;
+}
+
+/* Spoolman color dot */
+.spool-color {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    vertical-align: middle;
+}
+
+/* Navbar brand */
+.navbar-brand i {
+    color: var(--accent);
+}
+
+/* Card & table tweaks */
+.card {
+    border: 1px solid #e0e0e0;
+}
+
+.table > thead {
+    border-bottom: 2px solid var(--accent);
+}
+
+/* Form focus accent */
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.2rem rgba(240, 112, 64, 0.25);
+}
+
+/* Responsive tweaks */
+@media (max-width: 576px) {
+    .section-block {
+        padding: 14px 16px;
+    }
+    .total-price {
+        font-size: 1.25rem;
+    }
+}
+
+/* Preview image */
+#previewContainer {
+    text-align: center;
+}
+#previewImg {
+    border-color: var(--accent);
+}
+
+/* File upload status */
+#fileStatus .spinner-border {
+    width: 1rem;
+    height: 1rem;
+    border-width: 2px;
+}
+
+/* Slicer Inbox */
+/* Filament rows */
+.filament-row {
+    background: var(--section-bg);
+    border: 1px solid var(--section-border);
+}

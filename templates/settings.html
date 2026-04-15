@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen — PrintCostCalc{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h3 class="mb-4">Einstellungen</h3>
+        <form method="post">
+            <!-- Spoolman -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-link-45deg"></i> Spoolman</h5>
+                    <div class="mb-3">
+                        <label for="spoolman_url" class="form-label">Spoolman URL</label>
+                        <div class="input-group">
+                            <input type="url" class="form-control" id="spoolman_url" name="spoolman_url"
+                                   value="{{ settings.spoolman_url }}"
+                                   placeholder="http://192.168.1.100:7912">
+                            <button type="button" class="btn btn-outline-secondary" id="testSpoolman">
+                                Verbindung testen
+                            </button>
+                        </div>
+                        <div id="spoolmanResult" class="mt-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drucker FTP Sync -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-printer"></i> Drucker-Synchronisation (FTP)</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="ftp_host" class="form-label">Drucker IP-Adresse</label>
+                            <input type="text" class="form-control" id="ftp_host" name="ftp_host"
+                                   value="{{ settings.ftp_host }}" placeholder="192.168.0.176">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ftp_access_code" class="form-label">Zugriffscode</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="ftp_access_code"
+                                       name="ftp_access_code" value="{{ settings.ftp_access_code }}"
+                                       placeholder="Access Code vom Drucker">
+                                <button type="button" class="btn btn-outline-secondary" id="toggleFtpPw">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="ftp_sync_enabled"
+                               name="ftp_sync_enabled" {{ 'checked' if settings.ftp_sync_enabled }}>
+                        <label class="form-check-label" for="ftp_sync_enabled">
+                            Automatische Synchronisation (alle 5 Minuten)
+                        </label>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-secondary" id="testFtp">
+                            <i class="bi bi-wifi"></i> Verbindung testen
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="syncNow">
+                            <i class="bi bi-arrow-clockwise"></i> Jetzt synchronisieren
+                        </button>
+                        <a href="{{ url_for('printer_files') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-folder"></i> Drucker-Dateien
+                        </a>
+                    </div>
+                    <div id="ftpResult" class="mt-2"></div>
+                </div>
+            </div>
+
+            <!-- Defaults -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-sliders"></i> Standardwerte</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="currency" class="form-label">Währung</label>
+                            <input type="text" class="form-control" id="currency" name="currency"
+                                   value="{{ settings.currency }}" maxlength="5">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="default_markup" class="form-label">Standard-Markup (%)</label>
+                            <input type="number" class="form-control" id="default_markup"
+                                   name="default_markup" min="0" max="500"
+                                   value="{{ settings.default_markup }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="default_vat" class="form-label">Standard-MwSt. (%)</label>
+                            <input type="number" class="form-control" id="default_vat"
+                                   name="default_vat" step="0.1" min="0"
+                                   value="{{ settings.default_vat }}">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="default_prep_cost_per_hour" class="form-label">
+                                Vorbereitung (€/Std)
+                            </label>
+                            <input type="number" class="form-control" id="default_prep_cost_per_hour"
+                                   name="default_prep_cost_per_hour" step="0.50" min="0"
+                                   value="{{ settings.default_prep_cost_per_hour }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="default_postprocessing_cost_per_hour" class="form-label">
+                                Nachbearbeitung (€/Std)
+                            </label>
+                            <input type="number" class="form-control"
+                                   id="default_postprocessing_cost_per_hour"
+                                   name="default_postprocessing_cost_per_hour" step="0.50" min="0"
+                                   value="{{ settings.default_postprocessing_cost_per_hour }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg"></i> Einstellungen speichern
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('toggleFtpPw').addEventListener('click', function() {
+    var inp = document.getElementById('ftp_access_code');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+document.getElementById('testFtp').addEventListener('click', function() {
+    var host = document.getElementById('ftp_host').value.trim();
+    var code = document.getElementById('ftp_access_code').value.trim();
+    var result = document.getElementById('ftpResult');
+    if (!host || !code) {
+        result.innerHTML = '<span class="text-danger">IP und Zugriffscode eingeben.</span>';
+        return;
+    }
+    result.innerHTML = '<span class="text-muted">Teste Verbindung...</span>';
+    fetch('/api/ftp/test?host=' + encodeURIComponent(host) + '&code=' + encodeURIComponent(code))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                result.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Verbunden! ' + data.file_count + ' Dateien gefunden.</span>';
+            } else {
+                result.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Fehler') + '</span>';
+            }
+        })
+        .catch(function() {
+            result.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Verbindung fehlgeschlagen.</span>';
+        });
+});
+document.getElementById('syncNow').addEventListener('click', function() {
+    var result = document.getElementById('ftpResult');
+    result.innerHTML = '<span class="text-muted"><span class="spinner-border spinner-border-sm"></span> Synchronisiere...</span>';
+    fetch('/api/ftp/sync', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                result.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> ' + data.new_files + ' neue Dateien, ' + data.total_files + ' gesamt.</span>';
+            } else {
+                result.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.message || 'Fehler') + '</span>';
+            }
+        })
+        .catch(function() {
+            result.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Sync fehlgeschlagen.</span>';
+        });
+});
+
+document.getElementById('testSpoolman').addEventListener('click', function() {
+    var url = document.getElementById('spoolman_url').value.trim();
+    var result = document.getElementById('spoolmanResult');
+    if (!url) {
+        result.innerHTML = '<span class="text-danger">Bitte URL eingeben.</span>';
+        return;
+    }
+    result.innerHTML = '<span class="text-muted">Teste Verbindung...</span>';
+    fetch('/api/spoolman/test?url=' + encodeURIComponent(url))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                result.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Verbindung erfolgreich! ' + data.count + ' Spulen gefunden.</span>';
+            } else {
+                result.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Fehler') + '</span>';
+            }
+        })
+        .catch(function() {
+            result.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Verbindung fehlgeschlagen.</span>';
+        });
+});
+</script>
+{% endblock %}

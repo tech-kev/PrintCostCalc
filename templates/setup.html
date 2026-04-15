@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Ersteinrichtung — PrintCostCalc{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold"><i class="bi bi-calculator"></i> PrintCostCalc</h2>
+            <p class="text-muted">Ersteinrichtung</p>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3">Admin-Account erstellen</h5>
+                <p class="text-muted small">Erstelle den ersten Benutzer. Dieser wird automatisch zum Administrator.</p>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Benutzername</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Passwort</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               required minlength="4">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Account erstellen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

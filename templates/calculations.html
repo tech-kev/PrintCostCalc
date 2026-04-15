@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Meine Kalkulationen — PrintCostCalc{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Meine Kalkulationen</h3>
+    <a href="{{ url_for('calculation_new') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Neue Kalkulation
+    </a>
+</div>
+
+{% if calculations %}
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Job-Name</th>
+                    <th>Drucker</th>
+                    <th>Druckzeit</th>
+                    <th class="text-end">Endpreis</th>
+                    <th>Datum</th>
+                    <th class="text-end">Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for calc in calculations %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('calculation_edit', calc_id=calc.id) }}" class="text-decoration-none fw-medium">
+                            {{ calc.job_name or '(Ohne Name)' }}
+                        </a>
+                    </td>
+                    <td>{{ calc.printer_profile.name if calc.printer_profile else '-' }}</td>
+                    <td>{{ calc.printing_time_hours }}h {{ calc.printing_time_minutes }}min</td>
+                    <td class="text-end fw-bold">{{ '%.2f'|format(calc.total_price) }} {{ settings.currency }}</td>
+                    <td>{{ calc.updated_at.strftime('%d.%m.%Y %H:%M') if calc.updated_at else '-' }}</td>
+                    <td class="text-end text-nowrap">
+                        <a href="{{ url_for('calculation_edit', calc_id=calc.id) }}"
+                           class="btn btn-sm btn-outline-secondary" title="Bearbeiten">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{{ url_for('calculation_pdf', calc_id=calc.id) }}"
+                           class="btn btn-sm btn-outline-secondary" title="PDF" target="_blank">
+                            <i class="bi bi-file-pdf"></i>
+                        </a>
+                        <form method="post" action="{{ url_for('calculation_delete', calc_id=calc.id) }}"
+                              class="d-inline"
+                              onsubmit="return confirm('Kalkulation wirklich löschen?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Löschen">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+    <p class="mt-3">Noch keine Kalkulationen vorhanden.</p>
+    <a href="{{ url_for('calculation_new') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Erste Kalkulation erstellen
+    </a>
+</div>
+{% endif %}
+{% endblock %}
