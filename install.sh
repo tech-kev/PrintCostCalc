@@ -217,7 +217,7 @@ else
     success "Systembenutzer printcostcalc existiert bereits"
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || pwd)"
 
 LOCAL_SRC=""
 if [[ -f "$SCRIPT_DIR/app.py" ]]; then
