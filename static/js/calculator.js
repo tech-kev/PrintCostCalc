@@ -250,6 +250,49 @@ document.addEventListener('DOMContentLoaded', function () {
         activeFilamentRow = null;
     };
 
+    // ── Auto-match filaments from filename locations ────────────────
+    function matchFilamentsFromFilename(filename, totalWeight) {
+        // Parse pattern: "7+53_name.gcode.3mf" -> locations ["7", "53"]
+        var basename = filename.replace(/\.(gcode\.3mf|3mf|gcode|gco)$/i, '');
+        var m = basename.match(/^([\d+]+)_/);
+        if (!m) return;
+        var locations = m[1].split('+').filter(function (s) { return s.trim(); });
+        if (locations.length === 0) return;
+
+        // Fetch spools from Spoolman
+        fetch('/api/spoolman/spools')
+            .then(function (r) { return r.json(); })
+            .then(function (spools) {
+                if (!Array.isArray(spools) || spools.length === 0) return;
+
+                // Clear existing filament rows
+                filamentsList.innerHTML = '';
+
+                var perSpool = locations.length > 0 ? Math.round((totalWeight / locations.length) * 100) / 100 : 0;
+
+                locations.forEach(function (loc) {
+                    var data = {
+                        name: '', spool_price: 0, spool_weight: 1000,
+                        grams_used: perSpool, filament_type: 'PLA', location: loc
+                    };
+                    for (var i = 0; i < spools.length; i++) {
+                        if (String(spools[i].location || '') === loc) {
+                            data.name = spools[i].name || '';
+                            data.spool_price = spools[i].price || 0;
+                            data.spool_weight = spools[i].spool_weight || 1000;
+                            data.filament_type = spools[i].filament_type || 'PLA';
+                            break;
+                        }
+                    }
+                    addFilamentRow(data);
+                });
+
+                updateFilamentsJson();
+                calculate();
+            })
+            .catch(function () { });
+    }
+
     // ── Live calculation ─────────────────────────────────────────────
     function calculate() {
         var hours = val(printHours) + val(printMinutes) / 60;
@@ -381,6 +424,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 var jobName = document.getElementById('jobName');
                 if (!jobName.value) jobName.value = file.name.replace(/\.(3mf|gcode|gco)$/i, '');
+                // Match filaments from filename locations
+                matchFilamentsFromFilename(file.name, data.filament_weight_grams || val(filamentWeight));
                 calculate();
             })
             .catch(function () { fileStatus.innerHTML = '<span class="text-danger">Fehler.</span>'; });
