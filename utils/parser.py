@@ -25,6 +25,7 @@ def _parse_3mf(data):
         'printing_time_minutes': None,
         'filament_weight_grams': None,
         'preview_image_base64': None,
+        'preview_images': [],
         'filament_type': None,
     }
     try:
@@ -33,34 +34,41 @@ def _parse_3mf(data):
         logger.error("Failed to open 3MF archive: %s", e)
         return result
 
-    # Find thumbnail
-    try:
-        thumbnail_candidates = [
-            'Metadata/plate_1.png',
-            'Metadata/thumbnail.png',
-            'Metadata/plate_1_small.png',
-        ]
-        for candidate in thumbnail_candidates:
-            if candidate in zf.namelist():
-                img_data = zf.read(candidate)
-                result['preview_image_base64'] = base64.b64encode(img_data).decode('ascii')
-                break
-        if not result['preview_image_base64']:
-            for name in sorted(zf.namelist()):
-                if name.startswith('Metadata/') and name.lower().endswith('.png'):
-                    img_data = zf.read(name)
-                    result['preview_image_base64'] = base64.b64encode(img_data).decode('ascii')
-                    break
-    except Exception as e:
-        logger.debug("Thumbnail extraction failed: %s", e)
-
-    # Parse slice_info.config (Bambu Studio XML) first — most reliable
+    # Parse slice_info.config first to know which plates were sliced
     if 'Metadata/slice_info.config' in zf.namelist():
         try:
             content = zf.read('Metadata/slice_info.config').decode('utf-8', errors='replace')
             _extract_bambu_xml(content, result)
         except Exception:
             pass
+
+    # Find thumbnails only for sliced plates
+    try:
+        sliced = result.get('_sliced_plates', [])
+        if sliced:
+            plate_pngs = []
+            for idx in sorted(sliced):
+                name = f'Metadata/plate_{idx}.png'
+                if name in zf.namelist():
+                    plate_pngs.append(name)
+        else:
+            plate_pngs = sorted([
+                name for name in zf.namelist()
+                if re.match(r'Metadata/plate_\d+\.png$', name)
+            ])
+        if not plate_pngs:
+            for name in sorted(zf.namelist()):
+                if name.startswith('Metadata/') and name.lower().endswith('.png'):
+                    plate_pngs = [name]
+                    break
+        for png in plate_pngs:
+            img_data = zf.read(png)
+            b64 = base64.b64encode(img_data).decode('ascii')
+            result['preview_images'].append(b64)
+        if result['preview_images']:
+            result['preview_image_base64'] = result['preview_images'][0]
+    except Exception as e:
+        logger.debug("Thumbnail extraction failed: %s", e)
 
     # Parse all other metadata files
     for name in zf.namelist():
@@ -71,30 +79,47 @@ def _parse_3mf(data):
         except Exception:
             continue
 
-    logger.debug("3MF parse result: time=%sh%sm, weight=%sg, type=%s, has_preview=%s",
+    result.pop('_sliced_plates', None)
+    logger.debug("3MF parse result: time=%sh%sm, weight=%sg, type=%s, previews=%d",
                  result['printing_time_hours'], result['printing_time_minutes'],
                  result['filament_weight_grams'], result['filament_type'],
-                 result['preview_image_base64'] is not None)
+                 len(result['preview_images']))
     return result
 
 
 def _extract_bambu_xml(content, result):
-    """Parse Bambu Studio slice_info.config XML format."""
-    # Prediction (print time in seconds): <metadata key="prediction" value="33630"/>
-    if result['printing_time_hours'] is None:
-        m = re.search(r'<metadata\s+key="prediction"\s+value="(\d+)"', content)
-        if m:
-            total_sec = int(m.group(1))
-            result['printing_time_hours'] = total_sec // 3600
-            result['printing_time_minutes'] = (total_sec % 3600) // 60
+    """Parse Bambu Studio slice_info.config XML format. Sums only sliced plates."""
+    # Find individual plate blocks
+    plates = re.findall(r'<plate>(.*?)</plate>', content, re.DOTALL)
+    sliced_plate_indices = []
+    total_sec = 0
+    total_weight = 0.0
 
-    # Weight: <metadata key="weight" value="48.40"/>
-    if result['filament_weight_grams'] is None:
-        m = re.search(r'<metadata\s+key="weight"\s+value="([\d.]+)"', content)
-        if m:
-            result['filament_weight_grams'] = round(float(m.group(1)), 2)
+    for plate_xml in plates:
+        idx_m = re.search(r'<metadata\s+key="index"\s+value="(\d+)"', plate_xml)
+        time_m = re.search(r'<metadata\s+key="prediction"\s+value="(\d+)"', plate_xml)
+        weight_m = re.search(r'<metadata\s+key="weight"\s+value="([\d.]+)"', plate_xml)
 
-    # Filament type: <filament ... type="PLA" .../> (but NOT volume_type)
+        prediction = int(time_m.group(1)) if time_m else 0
+        weight = float(weight_m.group(1)) if weight_m else 0.0
+
+        if prediction > 0:
+            plate_idx = int(idx_m.group(1)) if idx_m else len(sliced_plate_indices) + 1
+            sliced_plate_indices.append(plate_idx)
+            total_sec += prediction
+            total_weight += weight
+
+    if total_sec > 0 and result['printing_time_hours'] is None:
+        result['printing_time_hours'] = total_sec // 3600
+        result['printing_time_minutes'] = (total_sec % 3600) // 60
+
+    if total_weight > 0 and result['filament_weight_grams'] is None:
+        result['filament_weight_grams'] = round(total_weight, 2)
+
+    # Store which plates were actually sliced (for thumbnail filtering)
+    result['_sliced_plates'] = sliced_plate_indices
+
+    # Filament type: first match
     if result['filament_type'] is None:
         m = re.search(r'<filament\s[^>]*\stype="(\w+)"', content)
         if m:

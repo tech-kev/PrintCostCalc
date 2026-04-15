@@ -20,7 +20,14 @@
     <div class="col-md-6 col-lg-4 file-card" data-name="{{ f.filename.split('/')[-1]|lower }}">
         <div class="card shadow-sm h-100 {{ 'border-success' if f.calculation_id else '' }}">
             <div class="card-body text-center">
-                {% if f.preview_image %}
+                {% if f.preview_images and f.preview_images|length > 0 %}
+                <div class="d-flex justify-content-center gap-1 flex-wrap mb-2">
+                    {% for img in f.preview_images %}
+                    <img src="data:image/png;base64,{{ img }}"
+                         alt="Platte {{ loop.index }}" class="rounded" style="max-height: 120px;">
+                    {% endfor %}
+                </div>
+                {% elif f.preview_image %}
                 <img src="data:image/png;base64,{{ f.preview_image }}"
                      alt="Vorschau" class="img-fluid rounded mb-2" style="max-height: 140px;">
                 {% else %}

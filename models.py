@@ -58,6 +58,7 @@ class Calculation(db.Model):
     printing_time_minutes = db.Column(db.Integer, default=0)
     filament_weight_grams = db.Column(db.Float, default=0)
     preview_image = db.Column(db.Text, nullable=True)
+    preview_images = db.Column(db.JSON, default=list)
 
     # Filament
     filament_type = db.Column(db.String(50), default='PLA')
@@ -116,6 +117,7 @@ class PrinterFile(db.Model):
     modified_at = db.Column(db.DateTime, nullable=True)
     # Parsed metadata for display
     preview_image = db.Column(db.Text, nullable=True)
+    preview_images = db.Column(db.JSON, default=list)
     printing_time_hours = db.Column(db.Integer, default=0)
     printing_time_minutes = db.Column(db.Integer, default=0)
     filament_weight_grams = db.Column(db.Float, default=0)

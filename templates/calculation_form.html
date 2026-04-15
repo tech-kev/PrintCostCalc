@@ -38,11 +38,22 @@
             <input type="file" class="form-control" id="fileUpload" accept=".3mf,.gcode,.gco">
             <div id="fileStatus" class="mt-1"></div>
         </div>
+        <input type="hidden" name="preview_images_json" id="previewImagesJson"
+               value='{{ (calculation.preview_images or [])|tojson if calculation else "[]" }}'>
         <div id="previewContainer" class="mb-3"
-             style="display:{{ 'block' if calculation and calculation.preview_image else 'none' }}">
-            <img id="previewImg" class="img-thumbnail"
-                 src="{{ ('data:image/png;base64,' + calculation.preview_image) if calculation and calculation.preview_image else '' }}"
-                 style="max-width:200px; max-height:200px;">
+             style="display:{{ 'block' if calculation and (calculation.preview_images or calculation.preview_image) else 'none' }}">
+            <div class="d-flex gap-2 flex-wrap" id="previewImagesWrap">
+                {% if calculation and calculation.preview_images %}
+                    {% for img in calculation.preview_images %}
+                    <img class="img-thumbnail preview-thumb" src="data:image/png;base64,{{ img }}"
+                         style="max-width:180px; max-height:180px;">
+                    {% endfor %}
+                {% elif calculation and calculation.preview_image %}
+                    <img id="previewImg" class="img-thumbnail preview-thumb"
+                         src="data:image/png;base64,{{ calculation.preview_image }}"
+                         style="max-width:180px; max-height:180px;">
+                {% endif %}
+            </div>
         </div>
         <div class="row">
             <div class="col-md-6">

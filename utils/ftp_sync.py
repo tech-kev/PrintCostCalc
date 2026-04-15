@@ -245,6 +245,7 @@ def sync_printer_files(app):
                     try:
                         parse_result = download_and_parse(ftp, rf['filename'])
                         pf.preview_image = parse_result.get('preview_image_base64')
+                        pf.preview_images = parse_result.get('preview_images') or []
                         pf.printing_time_hours = int(parse_result.get('printing_time_hours') or 0)
                         pf.printing_time_minutes = int(parse_result.get('printing_time_minutes') or 0)
                         pf.filament_weight_grams = float(parse_result.get('filament_weight_grams') or 0)

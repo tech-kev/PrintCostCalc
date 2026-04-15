@@ -254,16 +254,26 @@ def calculation_pdf(calc_id):
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
 
-    # Preview image (centered below job name)
-    if calc.preview_image:
+    # Preview images (max 4 per row, centered)
+    import base64 as b64mod
+    images = calc.preview_images or []
+    if not images and calc.preview_image:
+        images = [calc.preview_image]
+    if images:
         try:
-            import base64 as b64mod
-            img_data = b64mod.b64decode(calc.preview_image)
-            img_buf = BytesIO(img_data)
-            img_w = 45
-            img_x = (210 - img_w) / 2
-            pdf.image(img_buf, x=img_x, y=pdf.get_y(), w=img_w)
-            pdf.ln(img_w + 4)
+            per_row = min(len(images), 4)
+            img_w = min(40, (190 - (per_row - 1) * 4) // per_row)
+            rows = [images[i:i + per_row] for i in range(0, len(images), per_row)]
+            for row_imgs in rows:
+                total_w = img_w * len(row_imgs) + 4 * (len(row_imgs) - 1)
+                start_x = (210 - total_w) / 2
+                y = pdf.get_y()
+                for i, img_b64 in enumerate(row_imgs):
+                    img_data = b64mod.b64decode(img_b64)
+                    img_buf = BytesIO(img_data)
+                    pdf.image(img_buf, x=start_x + i * (img_w + 4), y=y, w=img_w)
+                pdf.ln(img_w + 2)
+            pdf.ln(2)
         except Exception:
             pdf.ln(2)
     else:
@@ -790,6 +800,7 @@ def printer_file_new_calc(file_id):
     calc.filament_weight_grams = pf.filament_weight_grams or 0
     calc.filament_type = pf.filament_type or 'PLA'
     calc.preview_image = pf.preview_image
+    calc.preview_images = pf.preview_images or []
     calc.filament_name = ''
     calc.spool_price = 0
     calc.spool_weight = 1000
@@ -883,7 +894,8 @@ def _save_calculation(calc, form):
     is_new = calc is None
     if is_new:
         calc = Calculation(user_id=current_user.id)
-        calc.uuid = form.get('uuid') or str(uuid.uuid4())
+        form_uuid = form.get('uuid', '').strip()
+        calc.uuid = form_uuid if form_uuid and form_uuid != 'None' else str(uuid.uuid4())
         db.session.add(calc)
         # Link to printer file if coming from printer files
         pf_id = form.get('printer_file_id')
@@ -899,6 +911,10 @@ def _save_calculation(calc, form):
     calc.printing_time_minutes = int(_float(form.get('printing_time_minutes'), 0))
     calc.filament_weight_grams = _float(form.get('filament_weight_grams'), 0)
     calc.preview_image = form.get('preview_image') or None
+    try:
+        calc.preview_images = json.loads(form.get('preview_images_json', '[]'))
+    except (json.JSONDecodeError, TypeError):
+        calc.preview_images = []
 
     calc.filament_type = form.get('filament_type', 'PLA')
     calc.filament_name = form.get('filament_name', '').strip()
@@ -1001,6 +1017,7 @@ def _calc_to_dict(calc):
         'printing_time_minutes': calc.printing_time_minutes,
         'filament_weight_grams': calc.filament_weight_grams,
         'preview_image': calc.preview_image,
+        'preview_images': calc.preview_images or [],
         'filament_type': calc.filament_type,
         'filament_name': calc.filament_name,
         'spool_price': calc.spool_price,
@@ -1052,9 +1069,11 @@ with app.app_context():
             "ALTER TABLE settings ADD COLUMN ftp_host VARCHAR(256) DEFAULT ''",
             "ALTER TABLE settings ADD COLUMN ftp_access_code VARCHAR(256) DEFAULT ''",
             "ALTER TABLE settings ADD COLUMN ftp_sync_enabled BOOLEAN DEFAULT 0",
+            "ALTER TABLE calculation ADD COLUMN preview_images JSON DEFAULT '[]'",
             "ALTER TABLE calculation ADD COLUMN filaments JSON DEFAULT '[]'",
             "ALTER TABLE printer_file ADD COLUMN modified_at DATETIME",
             "ALTER TABLE printer_file ADD COLUMN preview_image TEXT",
+            "ALTER TABLE printer_file ADD COLUMN preview_images JSON DEFAULT '[]'",
             "ALTER TABLE printer_file ADD COLUMN printing_time_hours INTEGER DEFAULT 0",
             "ALTER TABLE printer_file ADD COLUMN printing_time_minutes INTEGER DEFAULT 0",
             "ALTER TABLE printer_file ADD COLUMN filament_weight_grams FLOAT DEFAULT 0",
