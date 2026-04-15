@@ -425,10 +425,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 var jobName = document.getElementById('jobName');
                 if (!jobName.value) jobName.value = file.name.replace(/\.(3mf|gcode|gco)$/i, '');
                 // Match filaments from filename locations
-                matchFilamentsFromFilename(file.name, data.filament_weight_grams || val(filamentWeight));
+                try {
+                    matchFilamentsFromFilename(file.name, data.filament_weight_grams || val(filamentWeight));
+                } catch (e) {
+                    console.error('Filament matching error:', e);
+                }
                 calculate();
             })
-            .catch(function () { fileStatus.innerHTML = '<span class="text-danger">Fehler.</span>'; });
+            .catch(function (err) { fileStatus.innerHTML = '<span class="text-danger">Fehler: ' + (err.message || err) + '</span>'; console.error('File upload error:', err); });
     });
 
     // ── Dynamic "Other Costs" ────────────────────────────────────────
