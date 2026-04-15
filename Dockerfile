@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p instance static/icons
+RUN mkdir -p instance static/icons && chmod 777 instance
 
 EXPOSE 5002
 

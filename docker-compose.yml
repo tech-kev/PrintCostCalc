@@ -1,6 +1,6 @@
 services:
   printcostcalc:
-    build: .
+    image: techkev/printcostcalc:latest
     ports:
       - "5002:5002"
     environment:

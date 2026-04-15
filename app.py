@@ -922,6 +922,10 @@ def _calc_to_dict(calc):
 
 with app.app_context():
     os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
+    # SQLite on SMB/NFS: disable WAL mode
+    with db.engine.connect() as c:
+        c.execute(text("PRAGMA journal_mode=DELETE"))
+        c.commit()
     db.create_all()
     # Migrate existing databases
     with db.engine.connect() as conn:
